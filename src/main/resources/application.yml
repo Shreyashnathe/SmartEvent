@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: SmartEvent
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smartevent
+    username: postgres
+    password: Shreyash@2005
+    hikari:
+      pool-name: SmartEventHikari
+      minimum-idle: 2
+      maximum-pool-size: 10
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+app:
+  jwt:
+    secret: MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=
+    expiration-ms: 3600000
