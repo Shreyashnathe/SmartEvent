@@ -50,6 +50,8 @@ public class AuthController {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setCodingPreferenceWeight(0.5);
+        user.setCommunicationPreferenceWeight(0.5);
         userRepository.save(user);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
@@ -68,4 +70,3 @@ public class AuthController {
         return ResponseEntity.ok(new AuthResponse(token, "Bearer"));
     }
 }
-

@@ -1,3 +1,4 @@
+com\smartevent\service\RecommendationScoringEngine$ScoringResult.class
 com\smartevent\dto\InteractionRequest.class
 com\smartevent\SmartEventApplication.class
 com\smartevent\dto\AuthRequest.class
@@ -10,11 +11,14 @@ com\smartevent\entity\Event.class
 com\smartevent\dto\RecommendationResponse.class
 com\smartevent\entity\EventCategory.class
 com\smartevent\entity\User.class
+com\smartevent\controller\SystemInfoController.class
 com\smartevent\dto\FieldErrorResponse.class
+com\smartevent\dto\SystemInfoResponse.class
 com\smartevent\entity\EventMode.class
 com\smartevent\repository\InteractionRepository.class
 com\smartevent\exception\GlobalExceptionHandler.class
 com\smartevent\security\JwtUtil.class
+com\smartevent\service\RecommendationScoringEngine.class
 com\smartevent\controller\InteractionController.class
 com\smartevent\entity\InteractionType.class
 com\smartevent\security\SecurityConfig.class

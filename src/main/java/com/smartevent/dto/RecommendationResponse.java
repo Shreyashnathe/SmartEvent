@@ -18,5 +18,5 @@ public class RecommendationResponse {
     private final EventMode mode;
     private final LocalDate eventDate;
     private final Double finalScore;
+    private final String explanation;
 }
-

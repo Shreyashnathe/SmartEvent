@@ -39,5 +39,10 @@ public class User extends BaseEntity {
     @CollectionTable(name = "user_skills", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "skill", nullable = false)
     private Set<String> skills = new HashSet<>();
-}
 
+    @Column(nullable = false)
+    private Double codingPreferenceWeight = 0.5;
+
+    @Column(nullable = false)
+    private Double communicationPreferenceWeight = 0.5;
+}

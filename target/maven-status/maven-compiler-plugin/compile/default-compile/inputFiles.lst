@@ -2,12 +2,14 @@ D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\common\BaseEntity.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\controller\AuthController.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\controller\InteractionController.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\controller\RecommendationController.java
+D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\controller\SystemInfoController.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\dto\AuthRequest.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\dto\AuthResponse.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\dto\ErrorResponse.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\dto\FieldErrorResponse.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\dto\InteractionRequest.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\dto\RecommendationResponse.java
+D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\dto\SystemInfoResponse.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\Event.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\EventCategory.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\EventMode.java
@@ -23,5 +25,6 @@ D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\security\JwtAuthenticationFi
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\security\JwtUtil.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\security\SecurityConfig.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\service\MockEventProviderService.java
+D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\service\RecommendationScoringEngine.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\service\RecommendationService.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\SmartEventApplication.java
