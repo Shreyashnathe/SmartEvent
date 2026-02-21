@@ -4,7 +4,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/smartevent
     username: postgres
-    password: Shreyash@2005
+    password: ${DB_PASSWORD}
     hikari:
       pool-name: SmartEventHikari
       minimum-idle: 2
@@ -25,5 +25,14 @@ spring:
 
 app:
   jwt:
-    secret: MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=
+    secret: ${JWT_SECRET}
     expiration-ms: 3600000
+
+external:
+  ticketmaster:
+    api-key: ${TICKETMASTER_API_KEY}
+    api-secret: ${TICKETMASTER_API_SECRET}
+
+ticketmaster:
+  base-url: https://app.ticketmaster.com/discovery/v2
+  api-key: ${TICKETMASTER_API_KEY}
