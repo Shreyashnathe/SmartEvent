@@ -1,4 +1,5 @@
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\common\BaseEntity.java
+D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\config\OpenApiConfig.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\controller\AuthController.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\controller\InteractionController.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\controller\RecommendationController.java
@@ -15,6 +16,7 @@ D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\EventCategory.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\EventMode.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\Interaction.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\InteractionType.java
+D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\Role.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\entity\User.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\exception\GlobalExceptionHandler.java
 D:\JAVA ALL\SmartEvent\src\main\java\com\smartevent\repository\EventRepository.java

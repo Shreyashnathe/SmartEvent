@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.smartevent.service.RecommendationScoringEngineTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.393 s -- in com.smartevent.service.RecommendationScoringEngineTest

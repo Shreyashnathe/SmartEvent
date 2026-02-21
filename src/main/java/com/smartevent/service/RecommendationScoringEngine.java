@@ -6,12 +6,7 @@ import com.smartevent.entity.User;
 import com.smartevent.repository.InteractionRepository;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -32,18 +27,25 @@ public class RecommendationScoringEngine {
     }
 
     public ScoringResult evaluate(User user, Event event) {
-        Set<String> interests = toLowercaseSet(user.getInterests());
-        Set<String> skills = toLowercaseSet(user.getSkills());
+
+        if (user == null || event == null) {
+            return new ScoringResult(0.0, "Invalid recommendation data");
+        }
+
+        Set<String> interests = safeSet(user.getInterests());
+        Set<String> skills = safeSet(user.getSkills());
         Set<String> interactedTags = getInteractedTags(user.getId());
 
         if (isColdStart(interests, skills, interactedTags)) {
-            return new ScoringResult(fallbackScore(event), fallbackExplanation(event));
+            return new ScoringResult(fallbackScore(event),
+                    fallbackExplanation(event));
         }
 
         double score = 0.0;
         List<String> reasons = new ArrayList<>();
 
         String matchedInterest = firstMatch(event.getTags(), interests);
+
         if (matchedInterest != null) {
             score += INTEREST_MATCH_WEIGHT;
             reasons.add("Matched your interest in " + matchedInterest);
@@ -65,16 +67,6 @@ public class RecommendationScoringEngine {
         score += communication * COMMUNICATION_WEIGHT * communicationPreference;
         score += popularity * POPULARITY_WEIGHT;
 
-        if (coding >= 75) {
-            reasons.add("High coding impact");
-        }
-        if (communication >= 75) {
-            reasons.add("High communication impact");
-        }
-        if (popularity >= 70) {
-            reasons.add("Popular event");
-        }
-
         if (isSameLocation(event, user)) {
             score += SAME_LOCATION_BONUS;
             reasons.add("Popular in your location");
@@ -86,29 +78,24 @@ public class RecommendationScoringEngine {
         return new ScoringResult(score, buildExplanation(reasons));
     }
 
-    public double score(User user, Event event) {
-        return evaluate(user, event).finalScore();
+    private Set<String> safeSet(Set<String> values) {
+        if (values == null) return Collections.emptySet();
+        return values.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(v -> !v.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
     }
 
-    private String fallbackExplanation(Event event) {
-        if (safeScore(event.getPopularityScore()) >= 70) {
-            return "Popular upcoming event";
-        }
-        if (event.getEventDate() != null) {
-            return "Upcoming soon";
-        }
-        return "Recommended event";
-    }
-
-    private String buildExplanation(List<String> reasons) {
-        if (reasons.isEmpty()) {
-            return "Recommended event";
-        }
-        return String.join("; ", reasons);
+    private boolean isColdStart(Set<String> interests,
+                                Set<String> skills,
+                                Set<String> interactedTags) {
+        return interests.isEmpty() && skills.isEmpty() && interactedTags.isEmpty();
     }
 
     private String firstMatch(Set<String> tags, Set<String> interests) {
-        Set<String> normalizedTags = toLowercaseSet(tags);
+        Set<String> normalizedTags = safeSet(tags);
         for (String interest : interests) {
             if (normalizedTags.contains(interest)) {
                 return interest;
@@ -117,8 +104,45 @@ public class RecommendationScoringEngine {
         return null;
     }
 
-    private boolean isColdStart(Set<String> interests, Set<String> skills, Set<String> interactedTags) {
-        return interests.isEmpty() && skills.isEmpty() && interactedTags.isEmpty();
+    private boolean hasInteractedTagMatch(Event event, Set<String> interactedTags) {
+        Set<String> tags = safeSet(event.getTags());
+        return interactedTags.stream().anyMatch(tags::contains);
+    }
+
+    private Set<String> getInteractedTags(UUID userId) {
+
+        if (userId == null) return Collections.emptySet();
+
+        var interactions = interactionRepository.findByUserId(userId);
+
+        if (interactions == null || interactions.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        Set<String> tags = new HashSet<>();
+
+        interactions.forEach(interaction -> {
+            if (interaction != null && interaction.getEvent() != null) {
+                tags.addAll(safeSet(interaction.getEvent().getTags()));
+            }
+        });
+
+        return tags;
+    }
+
+    private boolean isSameLocation(Event event, User user) {
+        if (event.getLocation() == null || user.getLocation() == null)
+            return false;
+        return event.getLocation().equalsIgnoreCase(user.getLocation());
+    }
+
+    private int safeScore(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private double normalizePreference(Double value) {
+        if (value == null) return 0.5;
+        return Math.max(0.0, Math.min(1.0, value));
     }
 
     private double fallbackScore(Event event) {
@@ -128,74 +152,22 @@ public class RecommendationScoringEngine {
     }
 
     private double calculateDateBoost(LocalDate eventDate) {
-        if (eventDate == null) {
-            return 0.0;
-        }
+        if (eventDate == null) return 0.0;
         long daysUntil = ChronoUnit.DAYS.between(LocalDate.now(), eventDate);
-        if (daysUntil < 0) {
-            return 0.0;
-        }
+        if (daysUntil < 0) return 0.0;
         return 1.0 / (daysUntil + 1);
     }
 
-    private boolean hasInterestMatch(Event event, Set<String> interests) {
-        Set<String> tags = toLowercaseSet(event.getTags());
-        if (tags.isEmpty() || interests.isEmpty()) {
-            return false;
-        }
-        return interests.stream().anyMatch(tags::contains);
+    private String fallbackExplanation(Event event) {
+        if (safeScore(event.getPopularityScore()) >= 70)
+            return "Popular upcoming event";
+        return "Upcoming soon";
     }
 
-    private boolean hasInteractedTagMatch(Event event, Set<String> interactedTags) {
-        Set<String> tags = toLowercaseSet(event.getTags());
-        if (tags.isEmpty() || interactedTags.isEmpty()) {
-            return false;
-        }
-        return interactedTags.stream().anyMatch(tags::contains);
+    private String buildExplanation(List<String> reasons) {
+        if (reasons.isEmpty()) return "Recommended event";
+        return String.join("; ", reasons);
     }
 
-    private Set<String> getInteractedTags(java.util.UUID userId) {
-        Set<String> tags = new HashSet<>();
-        interactionRepository.findByUserId(userId).forEach(interaction -> {
-            Set<String> eventTags = interaction.getEvent() != null
-                    ? toLowercaseSet(interaction.getEvent().getTags())
-                    : Collections.emptySet();
-            tags.addAll(eventTags);
-        });
-        return tags;
-    }
-
-    private boolean isSameLocation(Event event, User user) {
-        if (event.getLocation() == null || user.getLocation() == null) {
-            return false;
-        }
-        return event.getLocation().equalsIgnoreCase(user.getLocation());
-    }
-
-    private Set<String> toLowercaseSet(Set<String> values) {
-        if (values == null || values.isEmpty()) {
-            return Collections.emptySet();
-        }
-        return values.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .map(String::toLowerCase)
-                .filter(value -> !value.isBlank())
-                .collect(java.util.stream.Collectors.toSet());
-    }
-
-
-    private int safeScore(Integer value) {
-        return value == null ? 0 : value;
-    }
-
-    private double normalizePreference(Double value) {
-        if (value == null) {
-            return 0.5;
-        }
-        return Math.max(0.0, Math.min(1.0, value));
-    }
-
-    public record ScoringResult(double finalScore, String explanation) {
-    }
+    public record ScoringResult(double finalScore, String explanation) {}
 }

@@ -11,6 +11,7 @@ import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RecommendationService {
@@ -27,6 +28,7 @@ public class RecommendationService {
         this.scoringEngine = scoringEngine;
     }
 
+    @Transactional(readOnly = true)
     public List<RecommendationResponse> getTopUpcomingEvents() {
         User user = getAuthenticatedUser();
         if (user == null) {
@@ -34,17 +36,28 @@ public class RecommendationService {
         }
 
         LocalDate today = LocalDate.now();
-        List<Event> events = eventRepository.findByEventDateAfter(today.minusDays(1));
+
+        List<Event> events = eventRepository
+                .findByEventDateAfter(today.minusDays(1));
+
+        if (events == null || events.isEmpty()) {
+            return List.of();
+        }
 
         return events.stream()
                 .map(event -> toRecommendationResponse(event, user))
-                .sorted(Comparator.comparing(RecommendationResponse::getFinalScore, Comparator.nullsLast(Comparator.reverseOrder())))
+                .sorted(Comparator.comparing(
+                        RecommendationResponse::getFinalScore,
+                        Comparator.reverseOrder()))
                 .limit(5)
                 .toList();
     }
 
     private RecommendationResponse toRecommendationResponse(Event event, User user) {
-        RecommendationScoringEngine.ScoringResult result = scoringEngine.evaluate(user, event);
+
+        RecommendationScoringEngine.ScoringResult result =
+                scoringEngine.evaluate(user, event);
+
         return new RecommendationResponse(
                 event.getId(),
                 event.getTitle(),
@@ -58,16 +71,22 @@ public class RecommendationService {
     }
 
     private User getAuthenticatedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
         if (authentication == null || !authentication.isAuthenticated()) {
-            return null;
+            throw new RuntimeException("User not authenticated");
         }
 
         String email = authentication.getName();
+
         if (email == null || email.isBlank()) {
-            return null;
+            throw new RuntimeException("Invalid authentication principal");
         }
 
-        return userRepository.findByEmail(email).orElse(null);
+        return userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException("Authenticated user not found in database"));
     }
 }

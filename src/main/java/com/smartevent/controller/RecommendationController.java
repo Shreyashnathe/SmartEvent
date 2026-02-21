@@ -1,7 +1,6 @@
 package com.smartevent.controller;
 
 import com.smartevent.dto.RecommendationResponse;
-import com.smartevent.entity.Event;
 import com.smartevent.service.RecommendationService;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;

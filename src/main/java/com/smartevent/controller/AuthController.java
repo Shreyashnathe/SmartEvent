@@ -2,6 +2,7 @@ package com.smartevent.controller;
 
 import com.smartevent.dto.AuthRequest;
 import com.smartevent.dto.AuthResponse;
+import com.smartevent.entity.Role;
 import com.smartevent.entity.User;
 import com.smartevent.repository.UserRepository;
 import com.smartevent.security.CustomUserDetailsService;
@@ -52,6 +53,7 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setCodingPreferenceWeight(0.5);
         user.setCommunicationPreferenceWeight(0.5);
+        user.setRole(Role.ROLE_USER);
         userRepository.save(user);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());

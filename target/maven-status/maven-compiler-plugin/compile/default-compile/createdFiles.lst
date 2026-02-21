@@ -1,6 +1,7 @@
 com\smartevent\service\RecommendationScoringEngine$ScoringResult.class
 com\smartevent\dto\InteractionRequest.class
 com\smartevent\SmartEventApplication.class
+com\smartevent\entity\Role.class
 com\smartevent\dto\AuthRequest.class
 com\smartevent\dto\ErrorResponse.class
 com\smartevent\repository\EventRepository.class
@@ -24,6 +25,7 @@ com\smartevent\entity\InteractionType.class
 com\smartevent\security\SecurityConfig.class
 com\smartevent\controller\AuthController.class
 com\smartevent\dto\AuthResponse.class
+com\smartevent\config\OpenApiConfig.class
 com\smartevent\repository\UserRepository.class
 com\smartevent\common\BaseEntity.class
 com\smartevent\entity\Interaction.class
