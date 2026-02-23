@@ -1,33 +1,24 @@
 package com.smartevent.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
 import com.smartevent.entity.Event;
 import com.smartevent.entity.EventMode;
 import com.smartevent.entity.User;
-import com.smartevent.repository.InteractionRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
 class RecommendationScoringEngineTest {
 
-    @Mock
-    private InteractionRepository interactionRepository;
+     private RecommendationScoringEngine scoringEngine;
 
-    private RecommendationScoringEngine scoringEngine;
-
-    @BeforeEach
-    void setUp() {
-        scoringEngine = new RecommendationScoringEngine(interactionRepository);
-    }
+     @BeforeEach
+     void setUp() {
+        scoringEngine = new RecommendationScoringEngine();
+     }
 
     @Test
     void shouldScoreInterestMatch() {

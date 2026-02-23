@@ -11,4 +11,3 @@ public class FieldErrorResponse {
     private final String message;
     private final Object rejectedValue;
 }
-

@@ -3,7 +3,6 @@ package com.smartevent.service;
 import com.smartevent.entity.Event;
 import com.smartevent.entity.EventMode;
 import com.smartevent.entity.User;
-import com.smartevent.repository.InteractionRepository;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Component;
 public class RecommendationScoringEngine {
 
     private static final double INTEREST_MATCH_WEIGHT = 25.0;
-    private static final double PERSONALIZATION_BOOST_WEIGHT = 15.0;
     private static final double CODING_WEIGHT = 0.3;
     private static final double COMMUNICATION_WEIGHT = 0.2;
     private static final double POPULARITY_WEIGHT = 0.1;
@@ -26,10 +24,7 @@ public class RecommendationScoringEngine {
             "global hackathon series"
     );
 
-    private final InteractionRepository interactionRepository;
-
-    public RecommendationScoringEngine(InteractionRepository interactionRepository) {
-        this.interactionRepository = interactionRepository;
+    public RecommendationScoringEngine() {
     }
 
     public ScoringResult evaluate(User user, Event event) {
@@ -40,9 +35,8 @@ public class RecommendationScoringEngine {
 
         Set<String> interests = safeSet(user.getInterests());
         Set<String> skills = safeSet(user.getSkills());
-        Set<String> interactedTags = getInteractedTags(user.getId());
 
-        if (isColdStart(interests, skills, interactedTags)) {
+        if (isColdStart(interests, skills)) {
             return new ScoringResult(fallbackScore(event),
                     fallbackExplanation(event));
         }
@@ -53,10 +47,6 @@ public class RecommendationScoringEngine {
 
         if (matchedInterest != null) {
             score += INTEREST_MATCH_WEIGHT;
-        }
-
-        if (hasInteractedTagMatch(event, interactedTags)) {
-            score += PERSONALIZATION_BOOST_WEIGHT;
         }
 
         int coding = safeScore(event.getCodingImpactScore());
@@ -100,9 +90,8 @@ public class RecommendationScoringEngine {
     }
 
     private boolean isColdStart(Set<String> interests,
-                                Set<String> skills,
-                                Set<String> interactedTags) {
-        return interests.isEmpty() && skills.isEmpty() && interactedTags.isEmpty();
+                                Set<String> skills) {
+        return interests.isEmpty() && skills.isEmpty();
     }
 
     private String firstMatch(Set<String> tags, Set<String> interests) {
@@ -115,31 +104,6 @@ public class RecommendationScoringEngine {
         return null;
     }
 
-    private boolean hasInteractedTagMatch(Event event, Set<String> interactedTags) {
-        Set<String> tags = safeSet(event.getTags());
-        return interactedTags.stream().anyMatch(tags::contains);
-    }
-
-    private Set<String> getInteractedTags(UUID userId) {
-
-        if (userId == null) return Collections.emptySet();
-
-        var interactions = interactionRepository.findByUserId(userId);
-
-        if (interactions == null || interactions.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        Set<String> tags = new HashSet<>();
-
-        interactions.forEach(interaction -> {
-            if (interaction != null && interaction.getEvent() != null) {
-                tags.addAll(safeSet(interaction.getEvent().getTags()));
-            }
-        });
-
-        return tags;
-    }
 
     private boolean isSameLocation(Event event, User user) {
         if (event.getLocation() == null || user.getLocation() == null)

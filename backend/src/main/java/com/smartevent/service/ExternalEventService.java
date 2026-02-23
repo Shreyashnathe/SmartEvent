@@ -319,37 +319,6 @@ public class ExternalEventService {
         return Collections.emptyList();
     }
 
-    private Object nestedValue(Map<String, Object> root, String... keys) {
-        Object current = root;
-        for (String key : keys) {
-            if (current == null) {
-                return null;
-            }
-            if (current instanceof Map<?, ?> mapValue) {
-                current = mapValue.get(key);
-                continue;
-            }
-            if (current instanceof List<?> listValue) {
-                int index = parseIndex(key);
-                if (index < 0 || index >= listValue.size()) {
-                    return null;
-                }
-                current = listValue.get(index);
-                continue;
-            }
-            return null;
-        }
-        return current;
-    }
-
-    private int parseIndex(String value) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ex) {
-            return -1;
-        }
-    }
-
     private String asString(Object value) {
         if (value == null) {
             return null;
@@ -358,4 +327,3 @@ public class ExternalEventService {
         return text.isBlank() ? null : text;
     }
 }
-
