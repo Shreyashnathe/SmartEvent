@@ -1,40 +1,24 @@
-# SmartEvent
+# SmartEvent Monorepo
 
-Minimal Spring Boot 3 backend scaffold (Java 21, Maven) with web, JPA, security, validation, PostgreSQL, Lombok, and JWT dependencies.
+This repository is organized as a monorepo:
 
-## Requirements
-- Java 21
-- Maven 3.9+
+- `backend/` – Spring Boot 3 + Maven backend
+- `frontend/` – React app (Vite)
 
-## Quick start
-Build the project:
+## Backend
 
-```bash
-mvn -q -DskipTests package
-```
-
-Run the app:
+Run from `backend/`:
 
 ```bash
 mvn spring-boot:run
 ```
 
-## Authentication
-Endpoints:
-- POST `/auth/register`
-- POST `/auth/login`
+## Frontend
 
-JWT settings are in `src/main/resources/application.yml` under `app.jwt`.
+Run from `frontend/`:
 
-## Scheduling
-A scheduled task generates 20 mock events every 24 hours once the app starts.
+```bash
+npm install
+npm run dev
+```
 
-## API Docs
-Swagger UI:
-- `http://localhost:8080/swagger-ui/index.html`
-
-OpenAPI JSON:
-- `http://localhost:8080/v3/api-docs`
-
-JWT authorization:
-- Use the `Authorize` button and paste: `Bearer <token>`

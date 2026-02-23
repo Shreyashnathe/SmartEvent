@@ -1,0 +1,40 @@
+# SmartEvent
+
+Minimal Spring Boot 3 backend scaffold (Java 21, Maven) with web, JPA, security, validation, PostgreSQL, Lombok, and JWT dependencies.
+
+## Requirements
+- Java 21
+- Maven 3.9+
+
+## Quick start
+Build the project:
+
+```bash
+mvn -q -DskipTests package
+```
+
+Run the app:
+
+```bash
+mvn spring-boot:run
+```
+
+## Authentication
+Endpoints:
+- POST `/auth/register`
+- POST `/auth/login`
+
+JWT settings are in `src/main/resources/application.yml` under `app.jwt`.
+
+## Scheduling
+A scheduled task generates 20 mock events every 24 hours once the app starts.
+
+## API Docs
+Swagger UI:
+- `http://localhost:8080/swagger-ui/index.html`
+
+OpenAPI JSON:
+- `http://localhost:8080/v3/api-docs`
+
+JWT authorization:
+- Use the `Authorize` button and paste: `Bearer <token>`

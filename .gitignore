@@ -1,13 +1,23 @@
 # Maven
 /target/
+/backend/target/
+
+# Node
+/node_modules/
+/frontend/node_modules/
 
 # IntelliJ IDEA
 /.idea/
 *.iml
 
+# VS Code
+/.vscode/
+
 # Logs
 *.log
 /logs/
+/backend/logs/
+/frontend/logs/
 
 # OS
 .DS_Store
@@ -20,7 +30,13 @@ Thumbs.db
 # Local config overrides
 application-local.yml
 application-local.yaml
+application-dev.yml
+application-dev.yaml
 
-# Secret-bearing properties (convention-based)
+# Secret-bearing configs (convention-based)
 *secret*.properties
 *secrets*.properties
+*secret*.yml
+*secret*.yaml
+*secrets*.yml
+*secrets*.yaml
