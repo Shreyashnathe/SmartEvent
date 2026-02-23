@@ -1,8 +1,40 @@
 import { useState, type FormEvent } from 'react';
+import type { AxiosError } from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axios';
 import Button from '../components/Button';
 import { type RegisterRequest } from '../types';
+
+type RegisterValidationErrors = Record<string, string[] | string>;
+
+type RegisterErrorResponse = {
+  message?: string;
+  errors?: RegisterValidationErrors;
+};
+
+function extractBackendErrorMessage(errorData?: RegisterErrorResponse): string {
+  if (!errorData) {
+    return 'Unable to create account. Please try again.';
+  }
+
+  if (typeof errorData.message === 'string' && errorData.message.trim()) {
+    return errorData.message;
+  }
+
+  if (errorData.errors && typeof errorData.errors === 'object') {
+    for (const value of Object.values(errorData.errors)) {
+      if (Array.isArray(value) && value.length > 0) {
+        return value[0];
+      }
+
+      if (typeof value === 'string' && value.trim()) {
+        return value;
+      }
+    }
+  }
+
+  return 'Unable to create account. Please try again.';
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -14,29 +46,29 @@ export default function RegisterPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-  event.preventDefault();
-  setErrorMessage("");
-  setIsSubmitting(true);
+    event.preventDefault();
+    setErrorMessage('');
+    setIsSubmitting(true);
 
-  try {
-    await axiosInstance.post("/api/auth/register", {
+    const payload: RegisterRequest = {
       email,
       password,
-      codingPreferenceWeight: codingPreference,
-      communicationPreferenceWeight: communicationPreference,
-    });
+      codingPreference,
+      communicationPreference,
+    };
 
-    navigate("/login", { replace: true });
-  } catch (error: any) {
-    console.error("Register error:", error.response?.data || error.message);
-    setErrorMessage(
-      error.response?.data?.message ||
-        "Unable to create account. Please try again."
-    );
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    try {
+      await axiosInstance.post('/api/auth/register', payload);
+      navigate('/login', { replace: true });
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<RegisterErrorResponse>;
+      console.error(axiosError.response?.data);
+
+      setErrorMessage(extractBackendErrorMessage(axiosError.response?.data));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">

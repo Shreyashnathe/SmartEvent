@@ -1,29 +1,27 @@
-import { useState, type FormEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import axiosInstance from "../api/axios";
-import Button from "../components/Button";
-import { useAuth } from "../context/AuthContext";
-import { type LoginResponse } from "../types";
+import { useState, type FormEvent } from 'react';
+import type { AxiosError } from 'axios';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import axiosInstance from '../api/axios';
+import Button from '../components/Button';
+import { useAuth } from '../context/AuthContext';
+import { AUTH_TOKEN_STORAGE_KEY } from '../context/authStorage';
+import { type LoginResponse } from '../types';
 
-function extractToken(payload: LoginResponse): string | null {
-  return (
-    payload.token ||
-    payload.accessToken ||
-    payload.jwt ||
-    payload.data?.token ||
-    payload.data?.accessToken ||
-    payload.data?.jwt ||
-    null
-  );
+type LoginErrorResponse = {
+  message?: string;
+};
+
+function resolveAuthToken(response: LoginResponse): string | undefined {
+  return response.token ?? response.accessToken ?? response.jwt ?? response.data?.token ?? response.data?.accessToken ?? response.data?.jwt;
 }
 
 export default function LoginPage() {
   const { token, login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState('');
 
   if (token) {
     return <Navigate to="/dashboard" replace />;
@@ -31,29 +29,38 @@ export default function LoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setErrorMessage("");
+    setErrorMessage('');
     setIsSubmitting(true);
 
     try {
-      const response = await axiosInstance.post("/api/auth/login", {
+      const { data: response } = await axiosInstance.post<LoginResponse>('/api/auth/login', {
         email,
         password,
       });
 
-      const resolvedToken = extractToken(response.data);
+      const resolvedToken = resolveAuthToken(response);
 
       if (!resolvedToken) {
-        throw new Error("Token missing in login response");
+        throw new Error('Token missing in login response');
       }
 
+      localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, resolvedToken);
       login(resolvedToken);
-      navigate("/dashboard", { replace: true });
-    } catch (error: any) {
-      console.error("Login error:", error.response?.data || error.message);
-      setErrorMessage(
-        error.response?.data?.message ||
-          "Invalid email or password. Please try again."
-      );
+      navigate('/dashboard', { replace: true });
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<LoginErrorResponse>;
+
+      if (axiosError?.isAxiosError) {
+        console.error(axiosError.response?.data);
+        setErrorMessage(
+          axiosError.response?.data?.message ??
+            'Invalid email or password. Please try again.'
+        );
+      } else if (error instanceof Error && error.message.trim()) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Unable to sign in right now. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -105,7 +112,7 @@ export default function LoginPage() {
           )}
 
           <Button type="submit" disabled={isSubmitting} fullWidth>
-            {isSubmitting ? "Signing in..." : "Login"}
+            {isSubmitting ? 'Signing in...' : 'Login'}
           </Button>
         </form>
 
