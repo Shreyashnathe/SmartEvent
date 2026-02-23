@@ -1,6 +1,42 @@
+@import "tailwindcss";
+
 body {
   margin: 0;
-  background: #f7f7f7;
-  color: #222;
+  background-color: #f8fafc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes fadeInSoft {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInSoft 200ms ease-out;
+}
+
+.animate-page-fade {
+  animation: fadeInSoft 200ms ease-out;
+}
+
+@keyframes fadeInOpacity {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-section-fade {
+  animation: fadeInOpacity 300ms ease-out;
 }
 
