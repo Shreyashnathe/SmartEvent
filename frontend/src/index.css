@@ -40,3 +40,7 @@ body {
   animation: fadeInOpacity 300ms ease-out;
 }
 
+.animate-toast-fade {
+  animation: fadeInOpacity 180ms ease-out;
+}
+
