@@ -1,6 +1,7 @@
 package com.smartevent.controller;
 
 import com.smartevent.dto.RecommendationResponse;
+import com.smartevent.dto.RecommendationSummaryResponse;
 import com.smartevent.service.RecommendationService;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,5 +21,15 @@ public class RecommendationController {
     @GetMapping
     public List<RecommendationResponse> getRecommendations() {
         return recommendationService.getTopUpcomingEvents();
+    }
+
+    @GetMapping("/live")
+    public List<RecommendationResponse> getLiveRecommendations() {
+        return recommendationService.getLiveRecommendations();
+    }
+
+    @GetMapping("/summary")
+    public RecommendationSummaryResponse getRecommendationSummary() {
+        return recommendationService.getLiveRecommendationSummary();
     }
 }

@@ -1,0 +1,41 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: SmartEvent
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smartevent
+    username: ${DB_USERNAME:your_db_user}
+    password: ${DB_PASSWORD:your_db_pass}
+    hikari:
+      pool-name: SmartEventHikari
+      minimum-idle: 2
+      maximum-pool-size: 10
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+#    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:your_secret_here}
+    expiration-ms: 3600000
+
+external:
+  ticketmaster:
+    api-key: ${TICKETMASTER_API_KEY:your_key_here}
+    api-secret: ${TICKETMASTER_API_SECRET:your_secret_here}
+
+ticketmaster:
+  base-url: https://app.ticketmaster.com/discovery/v2
+  api-key: ${TICKETMASTER_API_KEY:your_key_here}
+

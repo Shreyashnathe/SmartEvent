@@ -7,6 +7,7 @@
 
 # Logs
 *.log
+/logs/
 
 # OS
 .DS_Store
@@ -20,3 +21,6 @@ Thumbs.db
 application-local.yml
 application-local.yaml
 
+# Secret-bearing properties (convention-based)
+*secret*.properties
+*secrets*.properties

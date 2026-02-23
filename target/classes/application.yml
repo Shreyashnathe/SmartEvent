@@ -1,10 +1,12 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: SmartEvent
   datasource:
     url: jdbc:postgresql://localhost:5432/smartevent
-    username: postgres
-    password: Shreyash@2005
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     hikari:
       pool-name: SmartEventHikari
       minimum-idle: 2
@@ -15,7 +17,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+#    show-sql: true
     properties:
       hibernate:
         format_sql: true
@@ -25,5 +27,14 @@ spring:
 
 app:
   jwt:
-    secret: MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=
+    secret: ${JWT_SECRET:dev-secret-change-me}
     expiration-ms: 3600000
+
+external:
+  ticketmaster:
+    api-key: ${TICKETMASTER_API_KEY:dev-ticketmaster-key}
+    api-secret: ${TICKETMASTER_API_SECRET:dev-ticketmaster-secret}
+
+ticketmaster:
+  base-url: https://app.ticketmaster.com/discovery/v2
+  api-key: ${TICKETMASTER_API_KEY:dev-ticketmaster-key}

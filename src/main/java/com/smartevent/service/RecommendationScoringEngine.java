@@ -20,6 +20,12 @@ public class RecommendationScoringEngine {
     private static final double SAME_LOCATION_BONUS = 20.0;
     private static final double ONLINE_BONUS = 10.0;
 
+    private static final Set<String> FALLBACK_TITLES = Set.of(
+            "ai developer bootcamp 2026",
+            "full stack engineering summit",
+            "global hackathon series"
+    );
+
     private final InteractionRepository interactionRepository;
 
     public RecommendationScoringEngine(InteractionRepository interactionRepository) {
@@ -42,18 +48,15 @@ public class RecommendationScoringEngine {
         }
 
         double score = 0.0;
-        List<String> reasons = new ArrayList<>();
 
         String matchedInterest = firstMatch(event.getTags(), interests);
 
         if (matchedInterest != null) {
             score += INTEREST_MATCH_WEIGHT;
-            reasons.add("Matched your interest in " + matchedInterest);
         }
 
         if (hasInteractedTagMatch(event, interactedTags)) {
             score += PERSONALIZATION_BOOST_WEIGHT;
-            reasons.add("Based on your past activity");
         }
 
         int coding = safeScore(event.getCodingImpactScore());
@@ -69,13 +72,21 @@ public class RecommendationScoringEngine {
 
         if (isSameLocation(event, user)) {
             score += SAME_LOCATION_BONUS;
-            reasons.add("Popular in your location");
         } else if (event.getMode() == EventMode.ONLINE) {
             score += ONLINE_BONUS;
-            reasons.add("Available online");
         }
 
-        return new ScoringResult(score, buildExplanation(reasons));
+        String explanation = buildContextualExplanation(
+                matchedInterest,
+                coding,
+                communication,
+                codingPreference,
+                communicationPreference,
+                event.getMode(),
+                event.getTitle(),
+                isFallbackInjected(event.getTitle()));
+
+        return new ScoringResult(score, explanation);
     }
 
     private Set<String> safeSet(Set<String> values) {
@@ -164,9 +175,52 @@ public class RecommendationScoringEngine {
         return "Upcoming soon";
     }
 
-    private String buildExplanation(List<String> reasons) {
-        if (reasons.isEmpty()) return "Recommended event";
+    private String buildContextualExplanation(String matchedInterest,
+                                              int codingImpact,
+                                              int communicationImpact,
+                                              double codingPreference,
+                                              double communicationPreference,
+                                              EventMode mode,
+                                              String title,
+                                              boolean isFallback) {
+        List<String> reasons = new ArrayList<>();
+
+        if (matchedInterest != null) {
+            reasons.add("This event aligns with your interest in " + matchedInterest + ".");
+        }
+
+        if (codingImpact >= 80) {
+            reasons.add("Strong coding-focused event");
+        }
+
+        if (communicationImpact >= 80) {
+            reasons.add("Strong communication/networking opportunity");
+        }
+
+        String normalizedTitle = title == null ? "" : title.toLowerCase();
+        if (normalizedTitle.contains("hackathon")) {
+            reasons.add("Competitive hands-on learning");
+        }
+        if (normalizedTitle.contains("bootcamp")) {
+            reasons.add("Structured skill-building program");
+        }
+
+        if (isFallback) {
+            reasons.add("Curated tech event recommendation");
+        }
+
+        if (reasons.isEmpty()) {
+            return "Recommended event";
+        }
+
         return String.join("; ", reasons);
+    }
+
+    private boolean isFallbackInjected(String title) {
+        if (title == null || title.isBlank()) {
+            return false;
+        }
+        return FALLBACK_TITLES.contains(title.trim().toLowerCase());
     }
 
     public record ScoringResult(double finalScore, String explanation) {}

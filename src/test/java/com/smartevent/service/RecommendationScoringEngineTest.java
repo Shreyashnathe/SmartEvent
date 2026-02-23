@@ -27,7 +27,6 @@ class RecommendationScoringEngineTest {
     @BeforeEach
     void setUp() {
         scoringEngine = new RecommendationScoringEngine(interactionRepository);
-        when(interactionRepository.findByUserId(null)).thenReturn(List.of());
     }
 
     @Test
@@ -45,7 +44,7 @@ class RecommendationScoringEngineTest {
         RecommendationScoringEngine.ScoringResult result = scoringEngine.evaluate(user, event);
 
         assertThat(result.finalScore()).isEqualTo(25.0);
-        assertThat(result.explanation()).contains("Matched your interest in java");
+        assertThat(result.explanation()).contains("This event aligns with your interest in java.");
     }
 
     @Test
@@ -88,4 +87,3 @@ class RecommendationScoringEngineTest {
         assertThat(highScore - lowScore).isEqualTo(24.0);
     }
 }
-
