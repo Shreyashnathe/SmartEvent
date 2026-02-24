@@ -1,87 +1,67 @@
-import { useEffect, useMemo, useState } from 'react';
-import axiosInstance from '../api/axios';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import EmptyState from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
-import EventCard, { getEventCardKey, type EventCardProps } from '../components/EventCard';
+import { useToast } from '../context/ToastContext';
+import EventCard, { getEventCardKey } from '../components/EventCard';
 import Navbar from '../components/Navbar';
+import { getTrendingEvents } from '../services/eventService';
+import { getLiveRecommendations } from '../services/recommendationService';
 import SkeletonCard from '../components/SkeletonCard';
 import { type EventCardData } from '../types';
+import { resolveApiErrorMessage } from '../utils/apiError';
+import { getStorageItem, setStorageItem } from '../utils/storage';
 
-type ApiEventRecord = Record<string, unknown>;
 type EventMode = 'Online' | 'Offline';
 type ModeFilter = 'All' | EventMode;
 type SortFilter = 'score' | 'date';
+const BOOKMARKED_EVENT_IDS_KEY = 'smartevent-bookmarked-event-ids';
 
-function formatEventDate(value: string): string {
-  const parsedDate = new Date(value);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
+function getBookmarkId(event: Pick<EventCardData, 'id'>): string | null {
+  if (event.id === null || event.id === undefined || event.id === '') {
+    return null;
   }
 
-  return parsedDate.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return String(event.id);
 }
 
-function getArrayPayload(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) {
-    return payload;
+function parseStoredBookmarkIds(value: string | null): string[] {
+  if (!value) {
+    return [];
   }
 
-  if (payload && typeof payload === 'object') {
-    const container = payload as Record<string, unknown>;
-    const keys = ['data', 'items', 'events', 'results'];
+  try {
+    const parsed = JSON.parse(value) as unknown;
 
-    for (const key of keys) {
-      if (Array.isArray(container[key])) {
-        return container[key] as unknown[];
-      }
+    if (!Array.isArray(parsed)) {
+      return [];
     }
+
+    return parsed
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      .map((item) => item.trim());
+  } catch {
+    return [];
+  }
+}
+
+function formatScore(value: string | number): string {
+  if (typeof value === 'number') {
+    return value.toFixed(2);
   }
 
-  return [];
-}
+  const trimmed = value.trim();
 
-function normalizeEvent(item: ApiEventRecord): EventCardProps {
-  const id = (item.id as string | number | null | undefined) ?? (item.eventId as string | number | null | undefined) ?? null;
-  const title = (item.title as string) || (item.name as string) || 'Untitled Event';
-  const category = (item.category as string) || 'General';
-  const location = (item.location as string) || 'TBD';
-  const mode =
-    ((item.mode as string) || (item.eventMode as string))?.toLowerCase() === 'online' ||
-    item.isOnline === true
-      ? 'Online'
-      : 'Offline';
-  const rawDate =
-    (item.eventDate as string) ||
-    (item.date as string) ||
-    (item.startDate as string) ||
-    'TBA';
-  const finalScore = (item.finalScore as string | number) ?? (item.score as string | number) ?? 'N/A';
-  const explanation =
-    (item.explanation as string) ||
-    (item.description as string) ||
-    'No additional event details are available yet.';
+  if (!trimmed) {
+    return 'N/A';
+  }
 
-  return {
-    id,
-    title,
-    category,
-    mode,
-    location,
-    eventDate: formatEventDate(rawDate),
-    finalScore,
-    explanation,
-  };
-}
+  const parsed = Number(trimmed);
 
-function normalizeEvents(payload: unknown): EventCardData[] {
-  return getArrayPayload(payload)
-    .filter((item): item is ApiEventRecord => Boolean(item && typeof item === 'object'))
-    .map(normalizeEvent);
+  if (Number.isNaN(parsed)) {
+    return 'N/A';
+  }
+
+  return parsed.toFixed(2);
 }
 
 function parseScore(value: string | number): number {
@@ -122,21 +102,39 @@ function applyFilters(
 type EventSectionProps = {
   title: string;
   events: EventCardData[];
+  hasAnyEvents: boolean;
+  bookmarkedIds: Set<string>;
+  onToggleBookmark: (event: EventCardData) => void;
+  emptyStateSubtitle?: string;
 };
 
-function EventSection({ title, events }: EventSectionProps) {
+function EventSection({
+  title,
+  events,
+  hasAnyEvents,
+  bookmarkedIds,
+  onToggleBookmark,
+  emptyStateSubtitle,
+}: EventSectionProps) {
+  const emptySubtitle =
+    emptyStateSubtitle ??
+    (hasAnyEvents ? 'No events match your filters.' : 'No events available right now.');
+
   return (
     <section className="animate-section-fade">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
-        <span className="text-sm text-slate-500">{events.length} events</span>
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
+        <span className="text-sm text-slate-500 dark:text-slate-400">{events.length} events</span>
       </div>
 
       {events.length === 0 ? (
-        <EmptyState subtitle="Try changing filters or check back shortly for new recommendations." />
+        <EmptyState subtitle={emptySubtitle} />
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => (
+          {events.map((event) => {
+            const bookmarkId = getBookmarkId(event);
+
+            return (
             <EventCard
               key={getEventCardKey(event)}
               id={event.id}
@@ -144,10 +142,14 @@ function EventSection({ title, events }: EventSectionProps) {
               category={event.category}
               location={event.location}
               eventDate={event.eventDate}
-              finalScore={event.finalScore}
+              finalScore={formatScore(event.finalScore)}
               explanation={event.explanation}
+              isBookmarked={bookmarkId ? bookmarkedIds.has(bookmarkId) : false}
+              isBookmarkDisabled={!bookmarkId}
+              onToggleBookmark={() => onToggleBookmark(event)}
             />
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
@@ -162,13 +164,13 @@ function EventSectionSkeleton({ title }: EventSectionSkeletonProps) {
   return (
     <section className="animate-section-fade">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
         <span className="text-sm text-slate-400">Loading...</span>
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
-          <SkeletonCard key={`${title}-skeleton-${index}`} />
+          <SkeletonCard key={`${title}-skeleton-${index}`} staggerIndex={index} />
         ))}
       </div>
     </section>
@@ -177,9 +179,14 @@ function EventSectionSkeleton({ title }: EventSectionSkeletonProps) {
 
 export default function DashboardPage() {
   const { logout } = useAuth();
+  const toast = useToast();
   const [recommendedEvents, setRecommendedEvents] = useState<EventCardData[]>([]);
   const [trendingEvents, setTrendingEvents] = useState<EventCardData[]>([]);
+  const [bookmarkedEventIds, setBookmarkedEventIds] = useState<string[]>(() =>
+    parseStoredBookmarkIds(getStorageItem(BOOKMARKED_EVENT_IDS_KEY))
+  );
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [modeFilter, setModeFilter] = useState<ModeFilter>('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [sortFilter, setSortFilter] = useState<SortFilter>('score');
@@ -194,6 +201,33 @@ export default function DashboardPage() {
     return ['All', ...Array.from(categories).sort((left, right) => left.localeCompare(right))];
   }, [recommendedEvents, trendingEvents]);
 
+  const bookmarkedIdSet = useMemo(() => new Set(bookmarkedEventIds), [bookmarkedEventIds]);
+
+  const bookmarkedEvents = useMemo(() => {
+    const eventMap = new Map<string, EventCardData>();
+
+    [...recommendedEvents, ...trendingEvents].forEach((event) => {
+      const bookmarkId = getBookmarkId(event);
+
+      if (!bookmarkId) {
+        return;
+      }
+
+      if (!eventMap.has(bookmarkId)) {
+        eventMap.set(bookmarkId, event);
+      }
+    });
+
+    return bookmarkedEventIds
+      .map((bookmarkId) => eventMap.get(bookmarkId))
+      .filter((event): event is EventCardData => Boolean(event));
+  }, [bookmarkedEventIds, recommendedEvents, trendingEvents]);
+
+  const filteredBookmarkedEvents = useMemo(
+    () => applyFilters(bookmarkedEvents, modeFilter, categoryFilter, sortFilter),
+    [bookmarkedEvents, modeFilter, categoryFilter, sortFilter]
+  );
+
   const filteredRecommendedEvents = useMemo(
     () => applyFilters(recommendedEvents, modeFilter, categoryFilter, sortFilter),
     [recommendedEvents, modeFilter, categoryFilter, sortFilter]
@@ -204,64 +238,132 @@ export default function DashboardPage() {
     [trendingEvents, modeFilter, categoryFilter, sortFilter]
   );
 
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchEvents = async () => {
+  const fetchEvents = useCallback(async (
+    showFullLoading: boolean,
+    shouldApplyResult: () => boolean = () => true
+  ) => {
+    if (showFullLoading) {
       setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
 
-      const [recommendedResult, trendingResult] = await Promise.allSettled([
-        axiosInstance.get('/api/recommendations/live'),
-        axiosInstance.get('/api/events/trending'),
-      ]);
+    const [recommendedResult, trendingResult] = await Promise.allSettled([
+      getLiveRecommendations(),
+      getTrendingEvents(),
+    ]);
 
-      if (!mounted) {
-        return;
-      }
+    if (!shouldApplyResult()) {
+      return;
+    }
 
-      if (recommendedResult.status === 'fulfilled') {
-        setRecommendedEvents(normalizeEvents(recommendedResult.value.data));
-      } else {
-        setRecommendedEvents([]);
-      }
+    if (recommendedResult.status === 'fulfilled') {
+      setRecommendedEvents(recommendedResult.value);
+    } else {
+      setRecommendedEvents([]);
+      toast.error(
+        resolveApiErrorMessage(
+          recommendedResult.reason,
+          'Unable to load recommended events right now. Please try again.'
+        )
+      );
+    }
 
-      if (trendingResult.status === 'fulfilled') {
-        setTrendingEvents(normalizeEvents(trendingResult.value.data));
-      } else {
-        setTrendingEvents([]);
-      }
+    if (trendingResult.status === 'fulfilled') {
+      setTrendingEvents(trendingResult.value);
+    } else {
+      setTrendingEvents([]);
+      toast.error(
+        resolveApiErrorMessage(
+          trendingResult.reason,
+          'Unable to load trending events right now. Please try again.'
+        )
+      );
+    }
 
+    if (showFullLoading) {
       setIsLoading(false);
+    } else {
+      setIsRefreshing(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInitial = async () => {
+      await fetchEvents(true, () => isMounted);
     };
 
-    fetchEvents();
+    loadInitial();
 
     return () => {
-      mounted = false;
+      isMounted = false;
     };
+  }, [fetchEvents]);
+
+  const handleRefresh = async () => {
+    if (isLoading || isRefreshing) {
+      return;
+    }
+
+    await fetchEvents(false);
+  };
+
+  const toggleBookmarkedEvent = useCallback((event: EventCardData) => {
+    const bookmarkId = getBookmarkId(event);
+
+    if (!bookmarkId) {
+      return;
+    }
+
+    setBookmarkedEventIds((currentIds) => {
+      const nextIds = currentIds.includes(bookmarkId)
+        ? currentIds.filter((id) => id !== bookmarkId)
+        : [...currentIds, bookmarkId];
+
+      setStorageItem(BOOKMARKED_EVENT_IDS_KEY, JSON.stringify(nextIds));
+      return nextIds;
+    });
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Navbar onLogout={logout} />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <header className="mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="mt-2 text-sm text-slate-600 sm:text-base">Discover personalized and trending events.</p>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-8 sm:mb-10">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">Dashboard</h1>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isLoading || isRefreshing}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-900 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-slate-100"
+            >
+              {isRefreshing ? (
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700 dark:border-slate-600 dark:border-t-slate-200"
+                />
+              ) : null}
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+          </div>
+          <p className="mt-2 text-sm text-slate-600 sm:text-base dark:text-slate-300">Discover personalized and trending events.</p>
         </header>
 
-        <section className="mb-8 rounded-xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+        <section className="mb-8 rounded-xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <label htmlFor="modeFilter" className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              <label htmlFor="modeFilter" className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Mode
               </label>
               <select
                 id="modeFilter"
                 value={modeFilter}
                 onChange={(event) => setModeFilter(event.target.value as ModeFilter)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-indigo-400 dark:focus:ring-indigo-900"
               >
                 <option value="All">All</option>
                 <option value="Online">Online</option>
@@ -270,14 +372,14 @@ export default function DashboardPage() {
             </div>
 
             <div>
-              <label htmlFor="categoryFilter" className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              <label htmlFor="categoryFilter" className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Category
               </label>
               <select
                 id="categoryFilter"
                 value={categoryFilter}
                 onChange={(event) => setCategoryFilter(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-indigo-400 dark:focus:ring-indigo-900"
               >
                 {categoryOptions.map((categoryOption) => (
                   <option key={categoryOption} value={categoryOption}>
@@ -288,14 +390,14 @@ export default function DashboardPage() {
             </div>
 
             <div>
-              <label htmlFor="sortFilter" className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              <label htmlFor="sortFilter" className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Sort by
               </label>
               <select
                 id="sortFilter"
                 value={sortFilter}
                 onChange={(event) => setSortFilter(event.target.value as SortFilter)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-indigo-400 dark:focus:ring-indigo-900"
               >
                 <option value="score">Score</option>
                 <option value="date">Date</option>
@@ -311,8 +413,32 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-12">
-            <EventSection title="Recommended for You" events={filteredRecommendedEvents} />
-            <EventSection title="Trending Events" events={filteredTrendingEvents} />
+            <EventSection
+              title="Bookmarked Events"
+              events={filteredBookmarkedEvents}
+              hasAnyEvents={bookmarkedEvents.length > 0}
+              bookmarkedIds={bookmarkedIdSet}
+              onToggleBookmark={toggleBookmarkedEvent}
+              emptyStateSubtitle={
+                bookmarkedEventIds.length > 0
+                  ? 'No events match your filters.'
+                  : 'Bookmark events to quickly access them here.'
+              }
+            />
+            <EventSection
+              title="Recommended for You"
+              events={filteredRecommendedEvents}
+              hasAnyEvents={recommendedEvents.length > 0}
+              bookmarkedIds={bookmarkedIdSet}
+              onToggleBookmark={toggleBookmarkedEvent}
+            />
+            <EventSection
+              title="Trending Events"
+              events={filteredTrendingEvents}
+              hasAnyEvents={trendingEvents.length > 0}
+              bookmarkedIds={bookmarkedIdSet}
+              onToggleBookmark={toggleBookmarkedEvent}
+            />
           </div>
         )}
       </main>

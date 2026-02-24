@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { AUTH_TOKEN_STORAGE_KEY } from '../context/authStorage';
+import { clearStoredAuthToken, getStoredAuthToken } from '../context/authStorage';
 
 const API_BASE_URL = 'http://localhost:8080';
 
@@ -13,7 +13,7 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    const token = getStoredAuthToken();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -28,7 +28,7 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+      clearStoredAuthToken();
 
       if (window.location.pathname !== '/login') {
         window.location.replace('/login');

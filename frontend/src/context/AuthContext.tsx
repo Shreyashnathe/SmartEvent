@@ -6,7 +6,11 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import { AUTH_TOKEN_STORAGE_KEY } from './authStorage';
+import {
+  clearStoredAuthToken,
+  getStoredAuthToken,
+  setStoredAuthToken,
+} from './authStorage';
 
 type AuthContextValue = {
   token: string | null;
@@ -18,17 +22,15 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
-  );
+  const [token, setToken] = useState<string | null>(() => getStoredAuthToken());
 
   const login = useCallback((nextToken: string) => {
-    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, nextToken);
+    setStoredAuthToken(nextToken);
     setToken(nextToken);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    clearStoredAuthToken();
     setToken(null);
   }, []);
 

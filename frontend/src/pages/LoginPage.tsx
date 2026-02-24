@@ -1,15 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import type { AxiosError } from 'axios';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import axiosInstance from '../api/axios';
 import Button from '../components/Button';
 import { useAuth } from '../context/AuthContext';
-import { AUTH_TOKEN_STORAGE_KEY } from '../context/authStorage';
+import { useToast } from '../context/ToastContext';
+import { loginUser } from '../services/authService';
 import { type LoginResponse } from '../types';
-
-type LoginErrorResponse = {
-  message?: string;
-};
+import { resolveApiErrorMessage } from '../utils/apiError';
 
 function resolveAuthToken(response: LoginResponse): string | undefined {
   return response.token ?? response.accessToken ?? response.jwt ?? response.data?.token ?? response.data?.accessToken ?? response.data?.jwt;
@@ -17,6 +13,7 @@ function resolveAuthToken(response: LoginResponse): string | undefined {
 
 export default function LoginPage() {
   const { token, login } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +30,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const { data: response } = await axiosInstance.post<LoginResponse>('/api/auth/login', {
+      const response: LoginResponse = await loginUser({
         email,
         password,
       });
@@ -44,43 +41,35 @@ export default function LoginPage() {
         throw new Error('Token missing in login response');
       }
 
-      localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, resolvedToken);
       login(resolvedToken);
       navigate('/dashboard', { replace: true });
     } catch (error: unknown) {
-      const axiosError = error as AxiosError<LoginErrorResponse>;
-
-      if (axiosError?.isAxiosError) {
-        console.error(axiosError.response?.data);
-        setErrorMessage(
-          axiosError.response?.data?.message ??
-            'Invalid email or password. Please try again.'
-        );
-      } else if (error instanceof Error && error.message.trim()) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('Unable to sign in right now. Please try again.');
-      }
+      const message = resolveApiErrorMessage(
+        error,
+        'Invalid email or password. Please try again.'
+      );
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
-      <section className="w-full max-w-md rounded-xl border border-slate-100 bg-white p-8 shadow-sm">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 sm:py-10 dark:bg-slate-950">
+      <section className="w-full max-w-md rounded-xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-800 dark:bg-slate-900">
+        <header className="mb-6 space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
             Welcome back
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
             Sign in to continue to SmartEvent.
           </p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Email
             </label>
             <input
@@ -88,12 +77,12 @@ export default function LoginPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-900"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Password
             </label>
             <input
@@ -101,7 +90,7 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-900"
             />
           </div>
 
@@ -116,7 +105,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
           Don&apos;t have an account?{" "}
           <Link
             to="/register"
