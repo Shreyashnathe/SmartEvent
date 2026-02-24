@@ -1,5 +1,6 @@
 package com.smartevent.controller;
 
+import com.smartevent.dto.ExternalEventDto;
 import com.smartevent.dto.RecommendationResponse;
 import com.smartevent.service.RecommendationService;
 import java.util.List;
@@ -15,6 +16,11 @@ public class RecommendationController {
 
     public RecommendationController(RecommendationService recommendationService) {
         this.recommendationService = recommendationService;
+    }
+
+    @GetMapping("/trending")
+    public List<ExternalEventDto> getTrendingEvents() {
+        return recommendationService.getLiveTrendingEvents();
     }
 
     @GetMapping("/live")
