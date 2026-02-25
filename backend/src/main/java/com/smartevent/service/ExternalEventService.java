@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartevent.config.TicketmasterProperties;
 import com.smartevent.dto.ExternalEventDto;
+import com.smartevent.entity.User;
+import com.smartevent.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -19,6 +21,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 public class ExternalEventService {
@@ -28,13 +32,16 @@ public class ExternalEventService {
     private final WebClient webClient;
     private final TicketmasterProperties ticketmasterProperties;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     public ExternalEventService(@Qualifier("ticketmasterWebClient") WebClient webClient,
                                 TicketmasterProperties ticketmasterProperties,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                UserRepository userRepository) {
         this.webClient = webClient;
         this.ticketmasterProperties = ticketmasterProperties;
         this.objectMapper = objectMapper;
+        this.userRepository = userRepository;
     }
 
     public List<ExternalEventDto> fetchUpcomingEvents() {
@@ -53,8 +60,12 @@ public class ExternalEventService {
                                 .path("/events.json")
                                 .queryParam("apikey", ticketmasterProperties.getApiKey())
                                 .queryParam("size", 20)
-                                .queryParam("sort", "date,asc")
-                                .queryParam("countryCode", "US");
+                                .queryParam("sort", "date,asc");
+
+                        String countryCode = resolveUserCountryCode();
+                        if (countryCode != null) {
+                            builder.queryParam("countryCode", countryCode);
+                        }
 
                         if (keyword != null && !keyword.isBlank()) {
                             builder.queryParam("keyword", keyword);
@@ -325,5 +336,26 @@ public class ExternalEventService {
         }
         String text = String.valueOf(value).trim();
         return text.isBlank() ? null : text;
+    }
+
+    private String resolveUserCountryCode() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return null;
+            }
+            String email = authentication.getName();
+            if (email == null || email.isBlank()) {
+                return null;
+            }
+            return userRepository.findByEmail(email)
+                    .map(User::getLocation)
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank())
+                    .orElse(null);
+        } catch (Exception ex) {
+            logger.warn("Failed to resolve user location for Ticketmaster countryCode", ex);
+            return null;
+        }
     }
 }

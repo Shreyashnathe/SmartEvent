@@ -12,13 +12,16 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class RecommendationService {
@@ -47,7 +50,7 @@ public class RecommendationService {
 
         User user = getAuthenticatedUser();
         if (user == null) {
-            throw new RuntimeException("Authenticated user is null");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Authenticated user is null");
         }
 
         List<ExternalEventDto> externalEvents =
@@ -98,7 +101,7 @@ public class RecommendationService {
                 SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
         }
 
         String email = authentication.getName();
@@ -106,7 +109,7 @@ public class RecommendationService {
 
         return userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Authenticated user not found"));
     }
 
     public List<ExternalEventDto> getLiveTrendingEvents() {
@@ -249,6 +252,14 @@ public class RecommendationService {
                                      int communicationImpactScore,
                                      int popularityScore) {
         Event event = new Event();
+        UUID fallbackId = UUID.randomUUID();
+        try {
+            java.lang.reflect.Field idField = com.smartevent.common.BaseEntity.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(event, fallbackId);
+        } catch (ReflectiveOperationException ex) {
+            logger.warn("Failed to set fallback event id", ex);
+        }
         event.setTitle(title);
         event.setDescription(title);
         event.setCategory(category);

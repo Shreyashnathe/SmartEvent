@@ -8,4 +8,3 @@ public enum EventCategory {
     EDUCATION,
     OTHER
 }
-

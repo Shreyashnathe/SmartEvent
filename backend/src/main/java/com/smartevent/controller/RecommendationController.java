@@ -19,7 +19,7 @@ public class RecommendationController {
     }
 
     @GetMapping("/trending")
-    public List<ExternalEventDto> getTrendingEvents() {
+    public List<ExternalEventDto> getLiveTrendingEvents() {
         return recommendationService.getLiveTrendingEvents();
     }
 

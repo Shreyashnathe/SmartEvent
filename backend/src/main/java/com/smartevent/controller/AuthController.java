@@ -2,6 +2,7 @@ package com.smartevent.controller;
 
 import com.smartevent.dto.AuthRequest;
 import com.smartevent.dto.AuthResponse;
+import com.smartevent.dto.RefreshTokenRequest;
 import com.smartevent.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@Valid @RequestBody AuthRequest request) {
         String token = authService.login(request);
+        return ResponseEntity.ok(Map.of("token", token));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, String>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        String token = authService.refreshAccessToken(request.getRefreshToken());
         return ResponseEntity.ok(Map.of("token", token));
     }
 }

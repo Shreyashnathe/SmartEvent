@@ -51,7 +51,8 @@ public class AuthService {
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);
-        return new AuthResponse(token, "Bearer");
+        String refreshToken = jwtUtil.generateRefreshToken(userDetails);
+        return new AuthResponse(token, "Bearer", refreshToken);
     }
 
     public String login(AuthRequest request) {
@@ -61,5 +62,16 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         return jwtUtil.generateToken(userDetails);
     }
-}
 
+    public String refreshAccessToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token required");
+        }
+        String username = jwtUtil.extractUsername(refreshToken);
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        if (!jwtUtil.isRefreshTokenValid(refreshToken, userDetails)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        }
+        return jwtUtil.generateToken(userDetails);
+    }
+}
