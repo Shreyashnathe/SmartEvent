@@ -1,12 +1,5 @@
 export type LoginResponse = {
-  token?: string;
-  accessToken?: string;
-  jwt?: string;
-  data?: {
-    token?: string;
-    accessToken?: string;
-    jwt?: string;
-  };
+  token: string;
 };
 
 export type RegisterRequest = {

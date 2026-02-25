@@ -2,6 +2,9 @@ import axiosInstance from '../api/axios';
 import type { UserProfile } from '../types';
 
 type ApiRecord = Record<string, unknown>;
+type ApiBookmarkRecord = {
+  eventId?: string | number | null;
+};
 
 export type UserProfileDetails = UserProfile & {
   createdAt?: string;
@@ -70,6 +73,37 @@ function normalizeUserProfile(payload: unknown): UserProfileDetails {
   };
 }
 
+function normalizeBookmarkIds(payload: unknown): string[] {
+  const root = extractRoot(payload);
+  const candidates = [payload, root, root.items, root.events, root.bookmarks, root.data];
+
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) {
+      continue;
+    }
+
+    return candidate
+      .map((item) => {
+        if (typeof item === 'string' || typeof item === 'number') {
+          return String(item);
+        }
+
+        if (item && typeof item === 'object') {
+          const record = item as ApiBookmarkRecord;
+
+          if (record.eventId !== undefined && record.eventId !== null && record.eventId !== '') {
+            return String(record.eventId);
+          }
+        }
+
+        return null;
+      })
+      .filter((item): item is string => Boolean(item));
+  }
+
+  return [];
+}
+
 export async function getCurrentUserProfile(): Promise<UserProfileDetails> {
   const { data } = await axiosInstance.get<unknown>('/api/users/me');
   return normalizeUserProfile(data);
@@ -91,4 +125,17 @@ export async function changeUserPassword(
     '/api/users/change-password',
     payload
   );
+}
+
+export async function getUserBookmarks(): Promise<string[]> {
+  const { data } = await axiosInstance.get<unknown>('/api/users/bookmarks');
+  return normalizeBookmarkIds(data);
+}
+
+export async function addUserBookmark(eventId: string): Promise<void> {
+  await axiosInstance.post(`/api/users/bookmarks/${encodeURIComponent(eventId)}`);
+}
+
+export async function removeUserBookmark(eventId: string): Promise<void> {
+  await axiosInstance.delete(`/api/users/bookmarks/${encodeURIComponent(eventId)}`);
 }

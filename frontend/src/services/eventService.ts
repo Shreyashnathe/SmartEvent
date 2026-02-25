@@ -80,6 +80,6 @@ function normalizeEvents(payload: unknown): EventCardData[] {
 }
 
 export async function getTrendingEvents(): Promise<EventCardData[]> {
-  const { data } = await axiosInstance.get<unknown>('/api/events/trending');
+  const { data } = await axiosInstance.get('/api/recommendations/trending');
   return normalizeEvents(data);
 }

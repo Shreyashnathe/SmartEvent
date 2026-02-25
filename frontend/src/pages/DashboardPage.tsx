@@ -6,15 +6,18 @@ import EventCard, { getEventCardKey } from '../components/EventCard';
 import Navbar from '../components/Navbar';
 import { getTrendingEvents } from '../services/eventService';
 import { getLiveRecommendations } from '../services/recommendationService';
+import {
+  addUserBookmark,
+  getUserBookmarks,
+  removeUserBookmark,
+} from '../services/userService';
 import SkeletonCard from '../components/SkeletonCard';
 import { type EventCardData } from '../types';
 import { resolveApiErrorMessage } from '../utils/apiError';
-import { getStorageItem, setStorageItem } from '../utils/storage';
 
 type EventMode = 'Online' | 'Offline';
 type ModeFilter = 'All' | EventMode;
 type SortFilter = 'score' | 'date';
-const BOOKMARKED_EVENT_IDS_KEY = 'smartevent-bookmarked-event-ids';
 
 function getBookmarkId(event: Pick<EventCardData, 'id'>): string | null {
   if (event.id === null || event.id === undefined || event.id === '') {
@@ -22,26 +25,6 @@ function getBookmarkId(event: Pick<EventCardData, 'id'>): string | null {
   }
 
   return String(event.id);
-}
-
-function parseStoredBookmarkIds(value: string | null): string[] {
-  if (!value) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value) as unknown;
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed
-      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-      .map((item) => item.trim());
-  } catch {
-    return [];
-  }
 }
 
 function formatScore(value: string | number): string {
@@ -182,9 +165,7 @@ export default function DashboardPage() {
   const toast = useToast();
   const [recommendedEvents, setRecommendedEvents] = useState<EventCardData[]>([]);
   const [trendingEvents, setTrendingEvents] = useState<EventCardData[]>([]);
-  const [bookmarkedEventIds, setBookmarkedEventIds] = useState<string[]>(() =>
-    parseStoredBookmarkIds(getStorageItem(BOOKMARKED_EVENT_IDS_KEY))
-  );
+  const [bookmarkedEventIds, setBookmarkedEventIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [modeFilter, setModeFilter] = useState<ModeFilter>('All');
@@ -292,7 +273,30 @@ export default function DashboardPage() {
     let isMounted = true;
 
     const loadInitial = async () => {
-      await fetchEvents(true, () => isMounted);
+      const [eventsResult, bookmarksResult] = await Promise.allSettled([
+        fetchEvents(true, () => isMounted),
+        getUserBookmarks(),
+      ]);
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (bookmarksResult.status === 'fulfilled') {
+        setBookmarkedEventIds(bookmarksResult.value);
+      } else {
+        setBookmarkedEventIds([]);
+        toast.error(
+          resolveApiErrorMessage(
+            bookmarksResult.reason,
+            'Unable to load bookmarks right now. Please try again.'
+          )
+        );
+      }
+
+      if (eventsResult.status === 'rejected') {
+        return;
+      }
     };
 
     loadInitial();
@@ -310,22 +314,37 @@ export default function DashboardPage() {
     await fetchEvents(false);
   };
 
-  const toggleBookmarkedEvent = useCallback((event: EventCardData) => {
+  const toggleBookmarkedEvent = useCallback(async (event: EventCardData) => {
     const bookmarkId = getBookmarkId(event);
 
     if (!bookmarkId) {
       return;
     }
 
-    setBookmarkedEventIds((currentIds) => {
-      const nextIds = currentIds.includes(bookmarkId)
-        ? currentIds.filter((id) => id !== bookmarkId)
-        : [...currentIds, bookmarkId];
+    const wasBookmarked = bookmarkedIdSet.has(bookmarkId);
+    const previousIds = bookmarkedEventIds;
+    const nextIds = wasBookmarked
+      ? bookmarkedEventIds.filter((id) => id !== bookmarkId)
+      : [...bookmarkedEventIds, bookmarkId];
 
-      setStorageItem(BOOKMARKED_EVENT_IDS_KEY, JSON.stringify(nextIds));
-      return nextIds;
-    });
-  }, []);
+    setBookmarkedEventIds(nextIds);
+
+    try {
+      if (wasBookmarked) {
+        await removeUserBookmark(bookmarkId);
+      } else {
+        await addUserBookmark(bookmarkId);
+      }
+    } catch (error: unknown) {
+      setBookmarkedEventIds(previousIds);
+      toast.error(
+        resolveApiErrorMessage(
+          error,
+          'Unable to update bookmark right now. Please try again.'
+        )
+      );
+    }
+  }, [bookmarkedEventIds, bookmarkedIdSet, toast]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">

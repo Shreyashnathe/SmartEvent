@@ -7,10 +7,6 @@ import { loginUser } from '../services/authService';
 import { type LoginResponse } from '../types';
 import { resolveApiErrorMessage } from '../utils/apiError';
 
-function resolveAuthToken(response: LoginResponse): string | undefined {
-  return response.token ?? response.accessToken ?? response.jwt ?? response.data?.token ?? response.data?.accessToken ?? response.data?.jwt;
-}
-
 export default function LoginPage() {
   const { token, login } = useAuth();
   const toast = useToast();
@@ -35,13 +31,7 @@ export default function LoginPage() {
         password,
       });
 
-      const resolvedToken = resolveAuthToken(response);
-
-      if (!resolvedToken) {
-        throw new Error('Token missing in login response');
-      }
-
-      login(resolvedToken);
+      login(response.token);
       navigate('/dashboard', { replace: true });
     } catch (error: unknown) {
       const message = resolveApiErrorMessage(
